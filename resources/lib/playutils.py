@@ -33,7 +33,6 @@ class PlayUtils():
         self.server = window('emby_server%s' % self.userid)
         
         self.doUtils = downloadutils.DownloadUtils().downloadUrl
-    
     def getPlayUrlNew(self):
         '''
             New style to retrieve the best playback method based on sending the profile to the server
@@ -81,7 +80,6 @@ class PlayUtils():
             playurl = "%s/emby/Videos/%s/stream.ts?audioCodec=copy&videoCodec=copy" % (self.server, self.item['Id'])
             playurl += "&api_key=" + str(user_token)
             window('emby_%s.playmethod' % playurl, value="DirectPlay")
-            
 
         elif self.item.get('MediaSources') and self.item['MediaSources'][0]['Protocol'] == "Http":
             # Only play as http, used for channels, or online hosting of content
@@ -106,7 +104,6 @@ class PlayUtils():
             window('emby_%s.playmethod' % playurl, value="DirectStream")
 
         elif self.isTranscoding():
-            
             log.info("File is transcoding.")
             playurl = self.transcoding()
             # Set playmethod property
@@ -166,6 +163,11 @@ class PlayUtils():
         # Make sure direct play is supported by the server
         if not canDirectPlay:
             log.info("Can't direct play, server doesn't allow/support it.")
+            return False
+
+        # Verify screen resolution
+        if self.resolutionConflict():
+            log.info("Can't direct play, resolution limit is enabled")
             return False
 
         location = self.item['LocationType']
@@ -271,6 +273,11 @@ class PlayUtils():
             log.info("The network speed is insufficient to direct stream file.")
             return False
 
+        # Verify screen resolution
+        if self.resolutionConflict():
+            log.info("Can't direct stream, resolution limit is enabled")
+            return False
+
         return True
 
     def directStream(self):
@@ -330,6 +337,11 @@ class PlayUtils():
             transcodeHi10P = settings('transcodeHi10P')
             if transcodeHi10P == "true":
                 playurl = "%s&MaxVideoBitDepth=8" % playurl
+
+            # Adjust video resolution
+            if self.resolutionConflict():
+                screenRes = self.getScreenResolution()
+                playurl = "%s&maxWidth=%s&maxHeight=%s" % (playurl, screenRes['width'], screenRes['height'])
 
             user_token = downloadutils.DownloadUtils().get_token()
             playurl += "&api_key=" + str(user_token)
@@ -660,3 +672,21 @@ class PlayUtils():
               }
             ]
         }
+
+    def resolutionConflict(self):
+        if settings('limitResolution') == "true":
+            screenRes = self.getScreenResolution()
+            videoRes = self.getVideoResolution()
+            return videoRes['width'] > screenRes['width'] or videoRes['height'] > screenRes['height']
+        else:
+            return False
+
+    def getScreenResolution(self):
+        wind = xbmcgui.Window()
+        return {'width' : wind.getWidth(),
+                'height' : wind.getHeight()}
+
+    def getVideoResolution(self):
+        return {'width' : self.item['MediaStreams'][0]['Width'],
+                'height' : self.item['MediaStreams'][0]['Height']}
+
