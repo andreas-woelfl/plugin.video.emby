@@ -33,6 +33,7 @@ class PlayUtils():
         self.server = window('emby_server%s' % self.userid)
         
         self.doUtils = downloadutils.DownloadUtils().downloadUrl
+
     def getPlayUrlNew(self):
         '''
             New style to retrieve the best playback method based on sending the profile to the server
@@ -81,6 +82,7 @@ class PlayUtils():
             playurl += "&api_key=" + str(user_token)
             window('emby_%s.playmethod' % playurl, value="DirectPlay")
 
+
         elif self.item.get('MediaSources') and self.item['MediaSources'][0]['Protocol'] == "Http":
             # Only play as http, used for channels, or online hosting of content
             log.info("File protocol is http.")
@@ -104,6 +106,7 @@ class PlayUtils():
             window('emby_%s.playmethod' % playurl, value="DirectStream")
 
         elif self.isTranscoding():
+
             log.info("File is transcoding.")
             playurl = self.transcoding()
             # Set playmethod property
